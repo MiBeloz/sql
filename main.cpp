@@ -1,57 +1,51 @@
-#include <iostream>
-#include <pqxx/pqxx>
+#include "main.h"
 
-#include <Windows.h>
-#include <stringapiset.h>
-
-#include "DatabaseClients.h"
-
-
-std::string cp1251_to_utf8(const char* str);
 
 int main(){
-	setlocale(LC_ALL, "ru_RU.UTF-8");
+	#if _WINDOWS
 	SetConsoleCP(1251);
-	std::string ggg;
-	std::cin >> ggg;
-
-	ggg = cp1251_to_utf8(ggg.c_str());
+	setlocale(LC_ALL, "ru_RU.UTF-8");
+	#endif
 	
-	try {
-		pqxx::connection c(
-			"host=127.0.0.1 "
-			"port=5432 "
-			"dbname=clients "
-			"user=postgres "
-			"password=oven57jpm");
+	while (true) {
+		print_title();
 
-		pqxx::work tx(c);
-		for (const auto& [name, surname, email] : tx.query<std::string, std::string, std::string>("select name, surname, email from client")) {
-			std::cout << "Имя: " << name << std::endl;
-			std::cout << "Фамилия: " << surname << std::endl;
-			std::cout << "email: " << email << std::endl;
-			std::cout << std::endl;
+		std::cout << "Выбирите действие:" << std::endl;
+		std::cout <<
+			"1 - Вывести список баз данных\n"
+			"2 - Создать базу данных\n"
+			"3 - Подключиться к существующей базе данных\n"
+			"0 - Выход\n"
+			<< std::endl;
+		int mn_select = 0;
+		std::cin >> mn_select;
+		while (mn_select < static_cast<int>(e_main_menu::exit) || mn_select > static_cast<int>(e_main_menu::connectToDB)) {
+			std::cout << "Неккоректный ввод! Введите еще раз:" << std::endl;
+			std::cin >> mn_select;
 		}
+		e_main_menu mn = static_cast<e_main_menu>(mn_select);
 
-		//tx.exec("insert into client values(3, 'валентина', 'белозерова', 'valushka@mail.ru')");
-		tx.commit();
-
-		pqxx::work tx2(c);
-		//tx2.exec("update client set email='belozerova.vv@omsk.gazprom-neft.ru' where email='valushka@mail.ru'");
-		tx2.exec("update client set email='" + ggg + "' where email='ggg'");
-		tx2.commit();
-		
+		if (mn == e_main_menu::exit) {
+			break;
+		}
+		else if (mn == e_main_menu::DB_list) {
+			SetConsoleCP(866);
+			system("psql -U postgres -A -q -t -c \"select datname from pg_database\" template1");
+			SetConsoleCP(1251);
+		}
+		else if (mn == e_main_menu::createDB) {
+			creat_db();
+		}
+		else if (mn == e_main_menu::connectToDB) {
+			connect_to_db();
+		}
 	}
-	catch (std::exception& ex) {
-		std::cout << ex.what() << std::endl;
-	}
 	
-	
-	
-	system("pause > nul");
 	return 0;
 }
 
+
+#if _WINDOWS
 std::string cp1251_to_utf8(const char* str) {
 	std::string res;
 	int result_u, result_c;
@@ -76,6 +70,97 @@ std::string cp1251_to_utf8(const char* str) {
 	res.append(cres);
 	delete[] cres;
 	return res;
+}
+#endif
+
+void print_title() {
+#if _WINDOWS
+	system("cls");
+#else
+	system("clear");
+#endif
+
+	std::cout << "\tРабота с PostgreSQL из C++\n\n" << std::endl;
+}
+
+void creat_db() {
+	std::string username, db_name, cmd;
+
+	print_title();
+	std::cout << "Введите имя пользователя(без пробелов):" << std::endl;
+	std::cin >> username;
+	std::cout << "Введите название базы данных(без пробелов):" << std::endl;
+	std::cin >> db_name;
+	std::cout << std::endl;
+
+	cmd = "createdb -U " + username + ' ' + db_name;
+
+	db_name = "";
+	username = "";
+
+	#if _WINDOWS
+	SetConsoleCP(866);
+	system(cmd.c_str());
+	SetConsoleCP(1251);
+	#else
+	system(cmd.c_str());
+	#endif
+
+	std::cout << "Нажмите любую клавишу для продолжения..." << std::endl;
+	#if _WINDOWS
+	system("pause > nul");
+	#else
+	std::cin.get();
+	#endif
+}
+
+void connect_to_db() {	
+	std::string username, db_name, password, cmd;
+
+	print_title();
+	std::cout << "Введите имя пользователя(без пробелов):" << std::endl;
+	std::cin >> username;
+	std::cout << "Введите название базы данных(без пробелов):" << std::endl;
+	std::cin >> db_name;
+	std::cout << "Введите пароль(без пробелов):" << std::endl;
+	std::cin >> password;
+	std::cout << std::endl;
+
+	try {
+		pqxx::connection c(
+			"host=127.0.0.1 "
+			"port=5432 "
+			"dbname=" + db_name + " "
+			"user=" + username + " "
+			"password=" + password);
+
+		db_name = "";
+		username = "";
+		password = "";
+
+		pqxx::work tx(c);
+		for (const auto& [name, surname, email] : tx.query<std::string, std::string, std::string>("select name, surname, email from client")) {
+			std::cout << "Имя: " << name << std::endl;
+			std::cout << "Фамилия: " << surname << std::endl;
+			std::cout << "email: " << email << std::endl;
+			std::cout << std::endl;
+		}
+
+		//tx.exec("insert into client values(3, 'Валентина', 'Белозерова', 'valushka@mail.ru')");
+		tx.commit();
+
+		//pqxx::work tx2(c);
+		//tx2.exec("update client set email='belozerova.vv@omsk.gazprom-neft.ru' where email='valushka@mail.ru'");
+		//tx2.exec("update client set email='" + ggg + "' where email='ggg'");
+		//tx2.commit();
+
+	}
+	catch (std::exception& ex) {
+		db_name = "";
+		username = "";
+		password = "";
+		std::cout << ex.what() << std::endl;
+	}
 }
 
 
