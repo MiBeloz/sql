@@ -2,10 +2,10 @@
 
 
 int main(){
-	#if _WINDOWS
+#if _WINDOWS
 	SetConsoleCP(1251);
 	setlocale(LC_ALL, "ru_RU.UTF-8");
-	#endif
+#endif
 	
 	while (true) {
 		print_title();
@@ -14,7 +14,8 @@ int main(){
 		std::cout <<
 			"1 - Вывести список баз данных\n"
 			"2 - Создать базу данных\n"
-			"3 - Подключиться к существующей базе данных\n"
+			"3 - Удалить базу данных\n"
+			"4 - Подключиться к существующей базе данных\n"
 			"0 - Выход\n"
 			<< std::endl;
 		int mn_select = 0;
@@ -29,12 +30,13 @@ int main(){
 			break;
 		}
 		else if (mn == e_main_menu::DB_list) {
-			SetConsoleCP(866);
-			system("psql -U postgres -A -q -t -c \"select datname from pg_database\" template1");
-			SetConsoleCP(1251);
+			show_db();
 		}
 		else if (mn == e_main_menu::createDB) {
-			creat_db();
+			create_db();
+		}
+		else if (mn == e_main_menu::deleteDB) {
+			delete_db();
 		}
 		else if (mn == e_main_menu::connectToDB) {
 			connect_to_db();
@@ -83,46 +85,98 @@ void print_title() {
 	std::cout << "\tРабота с PostgreSQL из C++\n\n" << std::endl;
 }
 
-void creat_db() {
+void show_db() {
+	std::string username, cmd;
+
+	print_title();
+	std::cout << "\tСписок баз данных\n" << std::endl;
+	std::cout << "Введите имя пользователя(без пробелов): ";
+	std::cin >> username;
+
+	Hide();
+	cmd = "psql -U " + username + " -l";
+	system(cmd.c_str());
+
+	std::cout << "Нажмите любую клавишу для продолжения..." << std::endl;
+#if _WINDOWS
+	system("pause > nul");
+#else
+	std::cin.get();
+#endif
+}
+
+void Hide() {
+	HWND Hide;
+	AllocConsole();
+	Hide = FindWindowA("ConsoleWindowClass", NULL);
+	ShowWindow(Hide, 1);
+}
+
+void create_db() {
 	std::string username, db_name, cmd;
 
 	print_title();
-	std::cout << "Введите имя пользователя(без пробелов):" << std::endl;
+	std::cout << "\tСоздание базы данных\n" << std::endl;
+	std::cout << "Введите имя пользователя(без пробелов): ";
 	std::cin >> username;
-	std::cout << "Введите название базы данных(без пробелов):" << std::endl;
+	std::cout << "Введите название базы данных(без пробелов): ";
 	std::cin >> db_name;
+	while (db_name == "postgres" || db_name == "template0" || db_name == "template1") {
+		std::cout << "Базу данных с этим названием нельзя создать! Введите другое название: ";
+		std::cin >> db_name;
+	}
 	std::cout << std::endl;
 
+	Hide();
 	cmd = "createdb -U " + username + ' ' + db_name;
 
-	db_name = "";
-	username = "";
-
-	#if _WINDOWS
-	SetConsoleCP(866);
 	system(cmd.c_str());
-	SetConsoleCP(1251);
-	#else
-	system(cmd.c_str());
-	#endif
 
 	std::cout << "Нажмите любую клавишу для продолжения..." << std::endl;
-	#if _WINDOWS
+#if _WINDOWS
 	system("pause > nul");
-	#else
+#else
 	std::cin.get();
-	#endif
+#endif
 }
 
-void connect_to_db() {	
+void delete_db() {
+	std::string username, db_name, cmd;
+
+	print_title();
+	std::cout << "\tУдаление базы данных\n" << std::endl;
+	std::cout << "Введите имя пользователя(без пробелов): ";
+	std::cin >> username;
+	std::cout << "Введите название базы данных(без пробелов): ";
+	std::cin >> db_name;
+	while (db_name == "postgres" || db_name == "template0" || db_name == "template1") {
+		std::cout << "Базу данных с этим названием нельзя удалить! Введите другое название: ";
+		std::cin >> db_name;
+	}
+	std::cout << std::endl;
+
+	Hide();
+	cmd = "dropdb -U " + username + ' ' + db_name;
+
+	system(cmd.c_str());
+
+	std::cout << "Нажмите любую клавишу для продолжения..." << std::endl;
+#if _WINDOWS
+	system("pause > nul");
+#else
+	std::cin.get();
+#endif
+}
+
+void connect_to_db() {
 	std::string username, db_name, password, cmd;
 
 	print_title();
-	std::cout << "Введите имя пользователя(без пробелов):" << std::endl;
+	std::cout << "Введите имя пользователя(без пробелов): ";
 	std::cin >> username;
-	std::cout << "Введите название базы данных(без пробелов):" << std::endl;
+	std::cout << "Введите название базы данных(без пробелов): ";
 	std::cin >> db_name;
-	std::cout << "Введите пароль(без пробелов):" << std::endl;
+	std::cout << "Введите пароль(без пробелов): ";
 	std::cin >> password;
 	std::cout << std::endl;
 
@@ -133,35 +187,45 @@ void connect_to_db() {
 			"dbname=" + db_name + " "
 			"user=" + username + " "
 			"password=" + password);
-
-		db_name = "";
-		username = "";
 		password = "";
 
-		pqxx::work tx(c);
-		for (const auto& [name, surname, email] : tx.query<std::string, std::string, std::string>("select name, surname, email from client")) {
-			std::cout << "Имя: " << name << std::endl;
-			std::cout << "Фамилия: " << surname << std::endl;
-			std::cout << "email: " << email << std::endl;
-			std::cout << std::endl;
-		}
+		std::cout << "Подключение успешно установлено!" << std::endl;
 
-		//tx.exec("insert into client values(3, 'Валентина', 'Белозерова', 'valushka@mail.ru')");
-		tx.commit();
 
-		//pqxx::work tx2(c);
-		//tx2.exec("update client set email='belozerova.vv@omsk.gazprom-neft.ru' where email='valushka@mail.ru'");
-		//tx2.exec("update client set email='" + ggg + "' where email='ggg'");
-		//tx2.commit();
+		//pqxx::work tx(c);
+		//for (const auto& [name, surname, email] : tx.query<std::string, std::string, std::string>("select name, surname, email from client")) {
+		//	std::cout << "Имя: " << name << std::endl;
+		//	std::cout << "Фамилия: " << surname << std::endl;
+		//	std::cout << "email: " << email << std::endl;
+		//	std::cout << std::endl;
+		//}
 
+		////tx.exec("insert into client values(3, 'Валентина', 'Белозерова', 'valushka@mail.ru')");
+		//tx.commit();
+
+		////pqxx::work tx2(c);
+		////tx2.exec("update client set email='belozerova.vv@omsk.gazprom-neft.ru' where email='valushka@mail.ru'");
+		////tx2.exec("update client set email='" + ggg + "' where email='ggg'");
+		////tx2.commit();
+
+#if _WINDOWS
+		system("pause > nul");
+#else
+		std::cin.get();
+#endif
 	}
 	catch (std::exception& ex) {
-		db_name = "";
-		username = "";
-		password = "";
 		std::cout << ex.what() << std::endl;
+		std::cout << "Нажмите любую клавишу для продолжения..." << std::endl;
+#if _WINDOWS
+		system("pause > nul");
+#else
+		std::cin.get();
+#endif
 	}
 }
+
+
 
 
 

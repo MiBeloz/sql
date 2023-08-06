@@ -4,8 +4,6 @@
 #include <string>
 #include <pqxx/pqxx>
 
-//#include "ShellAPI.h"
-
 #if _WINDOWS
 #include <Windows.h>
 #include <stringapiset.h>
@@ -17,6 +15,7 @@ enum class e_main_menu {
 	exit,
 	DB_list,
 	createDB,
+	deleteDB,
 	connectToDB
 };
 
@@ -25,5 +24,8 @@ std::string cp1251_to_utf8(const char* str);
 #endif
 
 void print_title();
-void creat_db();
+void show_db();
+void Hide();
+void create_db();
+void delete_db();
 void connect_to_db();
